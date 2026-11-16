@@ -48,7 +48,7 @@ def linearized_jacobian(state):
     return jacobian;
 
 # problem parameters
-N = 5000;            # time steps
+N = 500;            # time steps
 max_iter = 500;      # SCP iterations
 trust_region_position = 100;
 trust_region_velocity = 0.5;
@@ -82,7 +82,7 @@ x_final = np.array([
 # initial guess
 est_time = np.pi*sqrt(((((r_1 + r_2)/2)**3)/(mu))); # comes from Hohmann transfer time
 dt = est_time/(N - 1); # we take the estimated time of the trajectory and divide by number of scp nodes
-initial_trajectory_guess = forward_euler(np.array([0, -r_1, 1.3*sqrt(mu/r_1), 0]).reshape(4, 1), est_time); # 130% of circular velocity is our initial guess
+initial_trajectory_guess = forward_euler(np.array([0, -r_1, 1.2*sqrt(mu/r_1), 0]).reshape(4, 1), est_time); # 130% of circular velocity is our initial guess
 
 # downsample to N columns so SCP nodes match reference layout (4, N)
 idx = np.linspace(0, initial_trajectory_guess.shape[1] - 1, num = N).astype(int);

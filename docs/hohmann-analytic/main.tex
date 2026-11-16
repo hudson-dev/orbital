@@ -1,0 +1,679 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+\title{Analytic Solution to Hohmann Transfer}
+\author{Hudson Kim}
+\date{November 2026}
+
+\begin{document}
+\maketitle
+
+\section{Orbital Maneuvers}
+
+An orbital maneuver changes a spacecraft's orbit by changing its velocity.
+
+In the impulsive-burn approximation, the burn happens over a very short time, so the spacecraft's position is assumed not to change during the burn:
+
+\[
+\Delta t \approx 0,
+\qquad
+\Delta \mathbf r \approx 0.
+\]
+
+However, its velocity changes by a finite amount:
+
+\[
+\Delta \mathbf v
+=
+\mathbf v_{\text{after}}
+-
+\mathbf v_{\text{before}}.
+\]
+
+Thus, at the instant of the burn,
+
+\[
+\mathbf r_{\text{after}}
+=
+\mathbf r_{\text{before}},
+\]
+
+but
+
+\[
+\mathbf v_{\text{after}}
+\neq
+\mathbf v_{\text{before}}.
+\]
+
+Changing the velocity changes the orbital energy and therefore changes the shape and size of the orbit.
+
+For example, a prograde burn increases the spacecraft's speed and generally raises the opposite side of the orbit. A retrograde burn decreases the speed and generally lowers the opposite side of the orbit.
+
+The main equation used to determine velocity anywhere along an orbit is the vis-viva equation:
+
+\[
+\boxed{
+v
+=
+\sqrt{
+\mu
+\left(
+\frac{2}{r}
+-
+\frac{1}{a}
+\right)
+}
+}
+\]
+
+where
+
+\[
+\mu = \text{gravitational parameter},
+\]
+
+\[
+r = \text{current distance from the central body},
+\]
+
+and
+
+\[
+a = \text{semimajor axis of the orbit}.
+\]
+
+For a circular orbit,
+
+\[
+a=r,
+\]
+
+so the circular velocity becomes
+
+\[
+\boxed{
+v_c
+=
+\sqrt{\frac{\mu}{r}}
+}.
+\]
+
+
+\section{Two-Impulse Orbital Transfers}
+
+Suppose a spacecraft starts in one orbit and wants to reach another orbit.
+
+A common approach is to use an intermediate \textbf{transfer orbit} that intersects both the initial and final orbits.
+
+The maneuver consists of two burns:
+
+\begin{enumerate}
+    \item The first burn moves the spacecraft from the initial orbit onto the transfer orbit.
+    \item The second burn moves the spacecraft from the transfer orbit onto the final orbit.
+\end{enumerate}
+
+At the first burn,
+
+\[
+\boxed{
+\Delta v_1
+=
+v_{\text{transfer},1}
+-
+v_{\text{initial}}
+}.
+\]
+
+At the second burn,
+
+\[
+\boxed{
+\Delta v_2
+=
+v_{\text{final}}
+-
+v_{\text{transfer},2}
+}.
+\]
+
+The total velocity change required is
+
+\[
+\boxed{
+\Delta v_{\text{total}}
+=
+|\Delta v_1|
++
+|\Delta v_2|
+}.
+\]
+
+
+\section{Hohmann Transfer}
+
+A Hohmann transfer is a two-burn transfer between two coplanar circular orbits.
+
+Let
+
+\[
+r_1 = \text{radius of the initial circular orbit},
+\]
+
+\[
+r_2 = \text{radius of the final circular orbit},
+\]
+
+\[
+r_2>r_1.
+\]
+
+The transfer orbit is an ellipse whose periapsis touches the inner orbit and whose apoapsis touches the outer orbit.
+
+Therefore,
+
+\[
+r_p=r_1,
+\qquad
+r_a=r_2.
+\]
+
+Since the semimajor axis of an ellipse is
+
+\[
+a_t
+=
+\frac{r_p+r_a}{2},
+\]
+
+the semimajor axis of the transfer orbit is
+
+\[
+\boxed{
+a_t
+=
+\frac{r_1+r_2}{2}
+}.
+\]
+
+
+\subsection{First Burn}
+
+Before the first burn, the spacecraft is in the initial circular orbit.
+
+Its velocity is
+
+\[
+v_1
+=
+\sqrt{\frac{\mu}{r_1}}.
+\]
+
+After the first burn, the spacecraft is at periapsis of the transfer ellipse.
+
+Using vis-viva,
+
+\[
+v_{t1}
+=
+\sqrt{
+\mu
+\left(
+\frac{2}{r_1}
+-
+\frac{1}{a_t}
+\right)
+}.
+\]
+
+Substituting
+
+\[
+a_t
+=
+\frac{r_1+r_2}{2},
+\]
+
+gives
+
+\[
+v_{t1}
+=
+\sqrt{
+\frac{\mu}{r_1}
+\frac{2r_2}{r_1+r_2}
+}.
+\]
+
+The first burn is therefore
+
+\[
+\Delta v_1
+=
+v_{t1}-v_1.
+\]
+
+Thus,
+
+\[
+\boxed{
+\Delta v_1
+=
+\sqrt{\frac{\mu}{r_1}}
+\left(
+\sqrt{\frac{2r_2}{r_1+r_2}}
+-
+1
+\right)
+}.
+\]
+
+This burn increases the spacecraft's speed and raises the apoapsis from \(r_1\) to \(r_2\).
+
+
+\subsection{Second Burn}
+
+The spacecraft coasts along the transfer ellipse until it reaches apoapsis at
+
+\[
+r=r_2.
+\]
+
+Its velocity on the transfer ellipse is
+
+\[
+v_{t2}
+=
+\sqrt{
+\mu
+\left(
+\frac{2}{r_2}
+-
+\frac{1}{a_t}
+\right)
+}.
+\]
+
+Substituting the transfer-orbit semimajor axis gives
+
+\[
+v_{t2}
+=
+\sqrt{
+\frac{\mu}{r_2}
+\frac{2r_1}{r_1+r_2}
+}.
+\]
+
+The velocity required for a circular orbit at \(r_2\) is
+
+\[
+v_2
+=
+\sqrt{\frac{\mu}{r_2}}.
+\]
+
+Therefore,
+
+\[
+\Delta v_2
+=
+v_2-v_{t2}.
+\]
+
+So,
+
+\[
+\boxed{
+\Delta v_2
+=
+\sqrt{\frac{\mu}{r_2}}
+\left(
+1-
+\sqrt{\frac{2r_1}{r_1+r_2}}
+\right)
+}.
+\]
+
+This second burn raises the periapsis of the transfer orbit and circularizes the spacecraft into the final orbit.
+
+
+\subsection{Total Delta-V}
+
+The total velocity change required for the Hohmann transfer is
+
+\[
+\boxed{
+\Delta v_{\text{total}}
+=
+\Delta v_1+\Delta v_2
+}.
+\]
+
+
+\subsection{Transfer Time}
+
+The spacecraft travels from periapsis to apoapsis of the transfer ellipse. This is half of one orbital period. The period of an elliptical orbit is given by Kepler's third law:
+
+\[
+T
+=
+2\pi
+\sqrt{
+\frac{a_t^3}{\mu}
+}.
+\]
+
+Therefore, the Hohmann transfer time is
+
+\[
+t_H
+=
+\frac{T}{2}.
+\]
+
+Thus,
+
+\[
+\boxed{
+t_H
+=
+\pi
+\sqrt{
+\frac{a_t^3}{\mu}
+}
+}.
+\]
+
+Using
+
+\[
+a_t
+=
+\frac{r_1+r_2}{2},
+\]
+
+we obtain
+
+\[
+\boxed{
+t_H
+=
+\pi
+\sqrt{
+\frac{(r_1+r_2)^3}{8\mu}
+}
+}.
+\]
+
+
+\section{Example: Parking Orbit to GEO}
+
+Suppose a spacecraft begins in a circular parking orbit at an altitude of
+
+\[
+h_1 = 191.35~\text{km},
+\]
+
+and we want to transfer it to geostationary orbit at an altitude of
+
+\[
+h_2 = 35{,}781~\text{km}.
+\]
+
+Using Earth-radius units, the corresponding orbital radii are approximately
+
+\[
+r_1 = 1.03~ER,
+\qquad
+r_2 = 6.61~ER.
+\]
+
+The initial circular-orbit velocity is
+
+\[
+v_1
+=
+\sqrt{\frac{\mu}{r_1}}
+\approx
+0.985~\frac{ER}{TU}.
+\]
+
+The semimajor axis of the Hohmann transfer ellipse is
+
+\[
+a_t
+=
+\frac{r_1+r_2}{2},
+\]
+
+so
+
+\[
+a_t
+=
+\frac{1.03+6.61}{2}
+=
+3.82~ER.
+\]
+
+
+\subsection{First Burn}
+
+Using the vis-viva equation at periapsis,
+
+\[
+v_{t1}
+=
+\sqrt{
+\frac{2\mu}{r_1}
+-
+\frac{\mu}{a_t}
+},
+\]
+
+which gives
+
+\[
+v_{t1}
+\approx
+1.296~\frac{ER}{TU}.
+\]
+
+Therefore,
+
+\[
+\Delta v_1
+=
+v_{t1}-v_1,
+\]
+
+so
+
+\[
+\Delta v_1
+=
+1.296-0.985
+\approx
+0.311~\frac{ER}{TU}.
+\]
+
+Thus,
+
+\[
+\boxed{
+\Delta v_1
+\approx
+0.311~\frac{ER}{TU}
+}.
+\]
+
+
+\subsection{Second Burn}
+
+When the spacecraft reaches apoapsis of the transfer ellipse, its velocity is
+
+\[
+v_{t2}
+=
+\sqrt{
+\frac{2\mu}{r_2}
+-
+\frac{\mu}{a_t}
+}
+\approx
+0.202~\frac{ER}{TU}.
+\]
+
+The required circular velocity at the final orbit is
+
+\[
+v_2
+=
+\sqrt{\frac{\mu}{r_2}}
+\approx
+0.389~\frac{ER}{TU}.
+\]
+
+Therefore,
+
+\[
+\Delta v_2
+=
+v_2-v_{t2},
+\]
+
+giving approximately
+
+\[
+\boxed{
+\Delta v_2
+\approx
+0.182~\frac{ER}{TU}
+}.
+\]
+
+
+\subsection{Total Delta-V}
+
+The total required velocity change is
+
+\[
+\Delta v_{\text{total}}
+=
+\Delta v_1+\Delta v_2.
+\]
+
+Therefore,
+
+\[
+\boxed{
+\Delta v_{\text{total}}
+\approx
+0.498~\frac{ER}{TU}
+}.
+\]
+
+
+\subsection{Transfer Time}
+
+The transfer takes half of the period of the transfer ellipse:
+
+\[
+t_H
+=
+\pi
+\sqrt{
+\frac{a_t^3}{\mu}
+}.
+\]
+
+Using
+
+\[
+a_t=3.82~ER,
+\]
+
+the transfer time is approximately
+
+\[
+t_H
+\approx
+23.45~TU.
+\]
+
+Converting to hours,
+
+\[
+\boxed{
+t_H
+\approx
+5.26~\text{hours}
+}.
+\]
+
+Thus, the spacecraft performs the first burn in the low Earth parking orbit, coasts for approximately \(5.26\) hours along the transfer ellipse, and then performs the second burn at GEO altitude to circularize the orbit.
+
+
+\section{Hohmann Transfer Summary}
+
+For a transfer from \(r_1\) to \(r_2\):
+
+\[
+\boxed{
+a_t
+=
+\frac{r_1+r_2}{2}
+}
+\]
+
+\[
+\boxed{
+\Delta v_1
+=
+\sqrt{\frac{\mu}{r_1}}
+\left(
+\sqrt{\frac{2r_2}{r_1+r_2}}
+-
+1
+\right)
+}
+\]
+
+\[
+\boxed{
+\Delta v_2
+=
+\sqrt{\frac{\mu}{r_2}}
+\left(
+1-
+\sqrt{\frac{2r_1}{r_1+r_2}}
+\right)
+}
+\]
+
+\[
+\boxed{
+\Delta v_{\text{total}}
+=
+\Delta v_1+\Delta v_2
+}
+\]
+
+\[
+\boxed{
+t_H
+=
+\pi
+\sqrt{
+\frac{(r_1+r_2)^3}{8\mu}
+}
+}.
+\]
+
+\end{document}

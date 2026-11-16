@@ -1,0 +1,224 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{float}
+\usepackage{booktabs}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+\title{Hohmann Transfer via Sequential Convex Programming}
+\author{Hudson Kim}
+\date{November 2026}
+
+\begin{document}
+\maketitle
+
+\section{Orbital Dynamics}
+
+Suppose a spacecraft starts in a circular orbit and we want to transfer it to a higher circular orbit. We will use two impulsive burns, one to enter the transfer orbit and another to circularize at the final orbit. Between the burns, the spacecraft follows two-body dynamics.
+
+Define the state as
+\[
+\mathbf{x}=\begin{bmatrix}x&y&v_x&v_y\end{bmatrix}^{T},
+\]
+where $x$ and $y$ are position in km and $v_x$ and $v_y$ are velocity in km/s. Let $r=\sqrt{x^2+y^2}$ be the distance from Earth's center and let $\mu=398600.44\ \mathrm{km^3/s^2}$ be Earth's gravitational parameter. Then
+\[
+\boxed{
+\dot{\mathbf{x}}=f(\mathbf{x})=
+\begin{bmatrix}
+ v_x\\
+ v_y\\
+ -\mu x/r^3\\
+ -\mu y/r^3
+\end{bmatrix}.}
+\]
+
+We use the following orbital radii:
+\[
+r_1=6569.487\ \mathrm{km},\qquad r_2=42159.137\ \mathrm{km}.
+\]
+These correspond to an initial altitude of $191.35$ km and a final altitude of $35781$ km.
+
+\section{Boundary Conditions}
+
+We want to solve for the two burns, $\Delta\mathbf v_1$ and $\Delta\mathbf v_2$, where each is a two-dimensional change in velocity (km/s). We discretize the transfer into $N$ states, $\mathbf{x}_0,\ldots,\mathbf{x}_{N-1}$.
+
+The first state is defined \emph{after} the first burn. Since an impulsive burn changes velocity but not position, we have
+\begin{align*}
+\begin{bmatrix}x_0\\y_0\end{bmatrix}
+&=\begin{bmatrix}0\\-r_1\end{bmatrix},\\
+\begin{bmatrix}v_{x,0}\\v_{y,0}\end{bmatrix}
+&=\begin{bmatrix}\sqrt{\mu/r_1}\\0\end{bmatrix}+\Delta\mathbf v_1.
+\end{align*}
+
+Likewise, the last state is defined \emph{before} the second burn. Ideally, it should be at $(0,r_2)$, and the second burn should give the spacecraft the circular velocity of the final orbit:
+\begin{align*}
+\begin{bmatrix}x_{N-1}\\y_{N-1}\end{bmatrix}
+&=\begin{bmatrix}0\\r_2\end{bmatrix}+\mathbf{s}_r,\\
+\begin{bmatrix}v_{x,N-1}\\v_{y,N-1}\end{bmatrix}+\Delta\mathbf v_2
+&=\begin{bmatrix}-\sqrt{\mu/r_2}\\0\end{bmatrix}+\mathbf{s}_v.
+\end{align*}
+
+Here $\mathbf{s}_r$ is a terminal position slack (km) and $\mathbf{s}_v$ is a terminal velocity slack (km/s). We allow these errors during the SCP iterations and penalize them in the objective. For the final solution, both should be close to zero.
+
+\subsection{Analytical Reference}
+
+We can compare the numerical result against the analytical Hohmann transfer. The semimajor axis of the transfer ellipse is
+\[
+a_t=\frac{r_1+r_2}{2}.
+\]
+Using the vis-viva equation, the two burn magnitudes are
+\begin{align*}
+\Delta v_{H,1}
+&=\sqrt{\mu\left(\frac{2}{r_1}-\frac{1}{a_t}\right)}
+ -\sqrt{\frac{\mu}{r_1}},\\
+\Delta v_{H,2}
+&=\sqrt{\frac{\mu}{r_2}}
+ -\sqrt{\mu\left(\frac{2}{r_2}-\frac{1}{a_t}\right)}.
+\end{align*}
+
+The spacecraft travels half of the transfer ellipse, so the transfer time is
+\[
+t_H=\pi\sqrt{\frac{a_t^3}{\mu}}.
+\]
+For our orbits, this gives
+\[
+\boxed{\Delta v_H\approx3.935\ \mathrm{km/s},\qquad t_H\approx5.26\ \mathrm{h}.}
+\]
+
+\section{Sequential Convex Programming}
+
+The dynamics are nonlinear because gravitational acceleration depends on the spacecraft's position. To use convex optimization, we approximate them around a reference trajectory.
+
+Let $\bar{\mathbf{x}}_k$ be the reference state at time step $k$. Using a first-order Taylor expansion,
+\[
+\boxed{
+f_{\mathrm{lin},k}(\mathbf{x}_k)
+=f(\bar{\mathbf{x}}_k)+A_k(\mathbf{x}_k-\bar{\mathbf{x}}_k),
+}
+\]
+where
+\[
+A_k=\left.\frac{\partial f}{\partial\mathbf{x}}\right|_{\mathbf{x}=\bar{\mathbf{x}}_k}
+\]
+is the Jacobian of the dynamics, evaluated at the reference state. Writing $\bar r=\sqrt{\bar x^2+\bar y^2}$, we get
+\[
+A_k=\begin{bmatrix}
+0&0&1&0\\
+0&0&0&1\\
+3\mu\bar x^2/\bar r^5-\mu/\bar r^3&3\mu\bar x\bar y/\bar r^5&0&0\\
+3\mu\bar x\bar y/\bar r^5&3\mu\bar y^2/\bar r^5-\mu/\bar r^3&0&0
+\end{bmatrix}.
+\]
+
+Since the reference states are fixed during each optimization, the linearized dynamics are affine in $\mathbf{x}_k$. After solving, we use the new trajectory as the reference for the next iteration.
+
+\subsection{Discretized Dynamics}
+
+Let $h=t_H/(N-1)$ be the time step in seconds. We know that the exact change in state is
+\[
+\mathbf{x}_{k+1}
+=\mathbf{x}_k+\int_{t_k}^{t_{k+1}} f(\mathbf{x}(t))\,dt.
+\]
+We need to approximate this integral to use it as a constraint in CVXPY.
+
+\subsubsection*{Forward Euler}
+
+I first used forward Euler, which evaluates the derivative at the beginning of each step:
+\[
+\boxed{
+\mathbf{x}_{k+1}=\mathbf{x}_k
++h f_{\mathrm{lin},k}(\mathbf{x}_k)+\mathbf{w}_k.
+}
+\]
+Here $\mathbf{w}_k\in\mathbb R^4$ is a slack variable for the discretized dynamics. Forward Euler has global error of order $O(h)$. Over the full transfer, its approximation can differ noticeably from the nonlinear trajectory.
+
+\subsubsection*{Trapezoidal Integration}
+
+I then used the trapezoidal rule. Instead of taking just the initial derivative, it uses the average of the derivatives at the beginning and end of the step:
+\[
+\boxed{
+\begin{aligned}
+\mathbf{x}_{k+1}=\mathbf{x}_k+\frac{h}{2}\bigl[
+&f_{\mathrm{lin},k}(\mathbf{x}_k)\\
+&+f_{\mathrm{lin},k+1}(\mathbf{x}_{k+1})\bigr]+\mathbf{w}_k.
+\end{aligned}
+}
+\]
+
+Notice that the second term is linearized around $\bar{\mathbf{x}}_{k+1}$, not $\bar{\mathbf{x}}_k$. Even though the update contains $\mathbf{x}_{k+1}$ on both sides, the constraint is still affine because the dynamics have been linearized. The trapezoidal rule has global error of order $O(h^2)$.
+
+\subsection{Objective and Trust Regions}
+
+We minimize the magnitude of the two burns, along with penalties on the slack variables:
+\[
+\boxed{
+\begin{aligned}
+\min\quad &\|\Delta\mathbf v_1\|_2+\|\Delta\mathbf v_2\|_2\\
+&+\lambda_d\sum_{k=0}^{N-2}\|\mathbf{w}_k\|_1
++\lambda_r\|\mathbf{s}_r\|_1
++\lambda_v\|\mathbf{s}_v\|_1.
+\end{aligned}
+}
+\]
+Here $\lambda_d$, $\lambda_r$, and $\lambda_v$ are positive weights. The slack variables let the optimization violate the dynamics or terminal conditions temporarily, but we want those violations to become small.
+
+We also constrain each new trajectory to stay near the reference trajectory. With $\mathbf{r}_k=[x_k,y_k]^T$, $\mathbf{v}_k=[v_{x,k},v_{y,k}]^T$, and $\mathbf{1}_2=[1,1]^T$, the trust regions are
+\[
+|\mathbf{r}_k-\bar{\mathbf{r}}_k|\le\rho_r\mathbf{1}_2,
+\qquad
+|\mathbf{v}_k-\bar{\mathbf{v}}_k|\le\rho_v\mathbf{1}_2.
+\]
+These inequalities are componentwise. I used $\rho_r=100$ km and $\rho_v=0.5$ km/s.
+
+\section{Problems with the Initial Guess}
+
+To initialize SCP, I propagated an initial orbit using a trial velocity, such as $1.25\sqrt{\mu/r_1}$ or $1.30\sqrt{\mu/r_1}$. The difficulty is that some of these trajectories end far from the target.
+
+The trust region applies at each SCP iteration, so the solution can move farther from the original guess after several iterations. However, the first convex subproblem still has to be feasible. If I require the final position to equal the target exactly, but the reference endpoint is thousands of kilometers away, it cannot satisfy both that equality and a $100$ km trust region at the final node.
+
+This is why I introduced the terminal position slack $\mathbf{s}_r$. It lets the optimizer move toward the target over multiple iterations. I also kept the position and velocity slacks separate because they measure different errors.
+
+The slack terms introduce another issue: the optimizer can appear to converge while still violating the original dynamics or boundary conditions. I therefore check the remaining slacks and propagate the optimized burns through the nonlinear two-body equations. This propagation gives the arrival miss reported below.
+
+\section{Numerical Results}
+
+Both runs use the same target orbit and the analytical transfer time of $5.26$ h. Here are the results summarized:
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Method & Total $\Delta v$ (km/s) & Arrival miss (km)\\
+\midrule
+Analytical Hohmann & $3.935$ & $\approx 0$\\
+Forward Euler & $3.654$ & $21585.7$\\
+Trapezoidal & $3.932$ & $205.7$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Forward Euler}
+
+Figure~\ref{fig:euler} shows the result from forward Euler. The total burn is $3.654$ km/s, which is lower than the analytical value, but the spacecraft misses the target by $21585.7$ km. The radius also varies substantially.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/forward_euler_updated.png}
+\caption{Forward Euler: $\Delta v=3.654$ km/s, $t_H=5.26$ h, and a propagated arrival miss of $21585.7$ km. The red nonlinear trajectory differs from the purple SCP nodes.}
+\label{fig:euler}
+\end{figure}
+
+\subsection{Trapezoidal Integration}
+
+Figure~\ref{fig:trap} shows the result with trapezoidal integration. The total burn is now $3.932$ km/s, compared with $3.935$ km/s analytically. The arrival miss is also much smaller at $205.7$ km. The propagated trajectory is close to the desired transfer orbit, although the $205.7$ km miss shows that the solution still needs work.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/trapezoidal_updated.png}
+\caption{Trapezoidal integration: $\Delta v=3.932$ km/s, $t_H=5.26$ h, and a propagated arrival miss of $205.7$ km. The nonlinear trajectory is much closer to the target orbit.}
+\label{fig:trap}
+\end{figure}
+
+\end{document}
