@@ -9,184 +9,121 @@
 \newcommand{\dv}{\Delta\mathbf v}
 \newcommand{\sr}{\mathbf s_r}
 \newcommand{\sv}{\mathbf s_v}
-\newcommand{\W}{\mathbf w}
+\newcommand{\sd}[1]{\mathbf s_{d,#1}}
 \newcommand{\norm}[1]{\left\lVert #1\right\rVert}
 \newcommand{\kms}{\mathrm{km/s}}
 \newcommand{\km}{\mathrm{km}}
 \newcommand{\lead}[1]{{\usebeamercolor[fg]{structure}\bfseries #1}}
+
 \title[Hohmann transfer]{Hohmann Transfer via Sequential Convex Programming}
 \subtitle{Two impulsive burns between circular Earth orbits}
 \author[Hudson Kim]{Hudson Kim}
 \institute[UC Berkeley]{University of California, Berkeley}
-\date{November 2026}
+\date{November 17, 2026}
 
 \begin{document}
 \begin{frame}
   \titlepage
 \end{frame}
 
-\begin{frame}{The restricted two-body equation}
-Let $M$ and $m$ be the masses of Earth and the spacecraft. In an inertial frame their positions are $\mathbf R_E$ and $\mathbf R_s$. Define $\R=\mathbf R_s-\mathbf R_E$ and $r=\norm{\R}_2$.
-\[
-  m\ddot{\mathbf R}_s=-\frac{GMm}{r^3}\R,
-  \qquad M\ddot{\mathbf R}_E=+\frac{GMm}{r^3}\R ,
-\]
-where $G$ is the gravitational constant. Subtract the accelerations:
-\[
-  \ddot{\R}=\ddot{\mathbf R}_s-\ddot{\mathbf R}_E
-       =-\frac{G(M+m)}{r^3}\R .
-\]
-For $m\ll M$, set $\mu=GM$. Between burns, gravity alone gives
-\[
-  \alert{\boxed{\ddot{\R}=-\mu\R/r^3}} .
-\]
-\note{Treat Earth as spherical and the spacecraft as a point mass. The subtraction is exact before applying the small-mass approximation. Reference: Bryan Weber, Orbital Mechanics and Astrodynamics, Relative Motion in the Two-Body Problem.}
-\end{frame}
-
-\begin{frame}{Energy and angular momentum during the coast}
-Let $\V=\dot{\R}$ and $v=\norm{\V}_2$. Dot the acceleration with velocity and use $\R\cdot\V=r\dot r$:
-\[
-  \frac{d}{dt}\frac{v^2}{2}
-    =\V\cdot\ddot{\R}=-\mu\frac{\dot r}{r^2}
-    =\frac{d}{dt}\frac{\mu}{r}.
-\]
-Thus the \lead{specific orbital energy} is constant:
-\[
-  \varepsilon=\frac{v^2}{2}-\frac{\mu}{r}.
-\]
-Gravity also exerts zero torque about Earth. The \lead{specific angular momentum} $\mathbf h=\R\times\V$ satisfies
-\[
-  \dot{\mathbf h}=\V\times\V+\R\times\ddot{\R}=\mathbf 0.
-\]
-\note{Specific means per unit spacecraft mass. Both conserved quantities apply on each unpowered arc. Reference: Bryan Weber, Orbital Mechanics and Astrodynamics, Energy Is Conserved in Orbital Motion.}
-\end{frame}
-
-\begin{frame}{Vis-viva from the two apsides}
-Let $r_p<r_a$ be periapsis and apoapsis on an ellipse, with speeds $v_p,v_a$. At each apsis $\R\perp\V$, so $H=\norm{\mathbf h}_2=r_pv_p=r_av_a$.
-\[
-  \frac{H^2}{2r_p^2}-\frac{\mu}{r_p}
-  =\frac{H^2}{2r_a^2}-\frac{\mu}{r_a}
-  \quad\Longrightarrow\quad H^2=\frac{2\mu r_pr_a}{r_p+r_a}.
-\]
-Substitution at periapsis gives the energy in terms of the semimajor axis $a=(r_p+r_a)/2$:
-\[
-  \varepsilon=\frac{\mu r_a}{r_p(r_p+r_a)}-\frac{\mu}{r_p}
-    =-\frac{\mu}{r_p+r_a}=-\frac{\mu}{2a}.
-\]
-At any radius on the ellipse, $v^2/2-\mu/r=-\mu/(2a)$. Hence
-\[
-  \alert{\boxed{v^2=\mu\!\left(\frac{2}{r}-\frac1a\right)}} .
-  \qquad \text{Circular limit }(a=r):\quad v_c(r)=\sqrt{\mu/r}.
-\]
-\note{At the two apsides the radial velocity vanishes. Using angular momentum first removes the two unknown speeds from the energy balance. The circle follows by continuity.}
-\end{frame}
-
-\begin{frame}{Geometry of the transfer ellipse}
-\begin{columns}[onlytextwidth,c]
-\begin{column}{.49\textwidth}
-The spacecraft leaves the inner circle at periapsis, at radius $r_1$. It reaches the outer circle at apoapsis, at radius $r_2$.
+\begin{frame}{What is a Hohmann transfer?}
+A Hohmann transfer connects two circular orbits in the same plane with two tangential burns and half an ellipse. Here the spacecraft moves from radius $r_1$ to a larger radius $r_2$.
 \medskip
 
-Earth is at a focus of the ellipse. The distance between the two burn points is its major axis:
-\[
-  2a_t=r_1+r_2.
-\]
+\begin{columns}[onlytextwidth,c]
+\begin{column}{.53\textwidth}
+\lead{Departure.} A forward burn raises the far side of the orbit to $r_2$. The burn point becomes the periapsis of the transfer ellipse.
+\medskip
+
+\lead{Coast.} Gravity carries the spacecraft halfway around the ellipse to apoapsis.
+\medskip
+
+\lead{Arrival.} A second forward burn raises the speed to the circular speed at $r_2$.
 \end{column}
-\begin{column}{.49\textwidth}
+\begin{column}{.45\textwidth}
 \centering
-% Scale the outer circular radius to 2.35. Earth is at the lower focus.
-\begin{tikzpicture}[x=1cm,y=1cm]
-  \pgfmathsetmacro{\ro}{2.35}
-  \pgfmathsetmacro{\ri}{\ro*6.569487/42.159137}
+% Schematic radii keep the two tangencies visible.
+\begin{tikzpicture}[x=1cm,y=1cm,>=stealth,font=\scriptsize]
+  \def\ri{0.72}
+  \def\ro{1.95}
   \pgfmathsetmacro{\majoraxis}{(\ri+\ro)/2}
   \pgfmathsetmacro{\minoraxis}{sqrt(\ri*\ro)}
   \pgfmathsetmacro{\centerheight}{(\ro-\ri)/2}
-  \draw[black!45,thin] (0,0) circle (\ro);
-  \fill[blue!15] (0,0) circle ({\ri*6.378137/6.569487});
-  \draw[black!50,thin] (0,0) circle (\ri);
+  \draw[black!45] (0,0) circle (\ro) (0,0) circle (\ri);
+  \filldraw[fill=blue!12,draw=blue!30] (0,0) circle (.45);
+  \node at (0,0) {Earth};
   \draw[structure.fg,very thick] plot[domain=-90:90,samples=90]
     ({\minoraxis*cos(\x)},{\centerheight+\majoraxis*sin(\x)});
+  \draw[structure.fg,->,very thick] (0,-\ri) -- (.86,-\ri);
+  \draw[structure.fg,->,very thick] (0,\ro) -- (-.86,\ro);
   \fill[structure.fg] (0,-\ri) circle (1.8pt) (0,\ro) circle (1.8pt);
-  \node[below right,inner sep=2pt,font=\scriptsize] at (0,-\ri) {Departure};
-  \node[above,font=\scriptsize] at (0,\ro) {Arrival};
+  \node[below] at (0,-\ri) {Burn 1};
+  \node[above] at (0,\ro) {Burn 2};
 \end{tikzpicture}
 \end{column}
 \end{columns}
 \end{frame}
 
-\begin{frame}{The analytical Hohmann transfer}
-The transfer ellipse touches the departure circle at $r_1$ and the arrival circle at $r_2$. Here $a_t=(r_1+r_2)/2$ and $r_2>r_1$.
-\[
-\begin{aligned}
-\Delta v_{H,1}
- &=\sqrt{\mu\!\left(\frac{2}{r_1}-\frac1{a_t}\right)}
-      -\sqrt{\frac{\mu}{r_1}}
-  &&\text{enter the ellipse},\\[4pt]
-\Delta v_{H,2}
- &=\sqrt{\frac{\mu}{r_2}}
-      -\sqrt{\mu\!\left(\frac{2}{r_2}-\frac1{a_t}\right)}
-  &&\text{circularize}.
-\end{aligned}
-\]
-Both impulses are prograde. The coast covers half an orbital period:
-\[
- \Delta v_H=\Delta v_{H,1}+\Delta v_{H,2},
- \qquad t_H=\pi\sqrt{a_t^3/\mu}.
-\]
-\end{frame}
-
-\begin{frame}{Numerical benchmark}
-With Earth's radius $R_E=6378.137\ \km$ and $\mu=398600.44\ \mathrm{km^3/s^2}$, the reference case is
+\begin{frame}{Free-body diagram during the coast}
+Let $M$ be Earth's mass, $m$ the spacecraft mass, and $G$ the gravitational constant. Gravity is the only force on each body in this model.
 \begin{center}
-\begin{tabular}{lrr}
-\toprule
- & Departure & Arrival\\ \midrule
-Altitude (km) & $191.35$ & $35{,}781$\\
-Radius (km) & $6{,}569.487$ & $42{,}159.137$\\
-Burn magnitude (km/s) & $2.457$ & $1.478$\\ \bottomrule
-\end{tabular}
+\begin{tikzpicture}[x=1cm,y=1cm,>=stealth,font=\normalsize]
+  \coordinate (E) at (0,0);
+  \coordinate (S) at (7,0);
+  \draw[black!35,dashed] (E) -- (S);
+  \filldraw[fill=blue!12,draw=blue!35] (E) circle (.46);
+  \filldraw[fill=black!14,draw=black!65] (S) circle (.14);
+  \node[above] at (0,.46) {Earth ($M$)};
+  \node[above] at (7,.46) {Spacecraft ($m$)};
+  \draw[structure.fg,very thick,->] (E) -- (2.3,0)
+    node[midway,above=2pt] {$\mathbf F_E$};
+  \draw[structure.fg,very thick,->] (S) -- (4.7,0)
+    node[midway,above=2pt] {$\mathbf F_s$};
+  \draw[black!35,densely dotted] (0,-.5) -- (0,-1.05) (7,-.19) -- (7,-1.05);
+  \draw[->] (0,-.92) -- (7,-.92) node[midway,below] {$\R=\mathbf R_s-\mathbf R_E$};
+\end{tikzpicture}
 \end{center}
+The inertial positions $\mathbf R_E$ and $\mathbf R_s$ define the separation $r=\norm{\R}_2$. The unit vector $\hat{\R}=\R/r$ points from Earth to the spacecraft, so the force on the spacecraft points along $-\hat{\R}$.
 \[
- \alert{\Delta v_H=3.935\ \kms}
- \qquad\qquad
- \alert{t_H=5.26\ \mathrm{h}}
+  \mathbf F_s=-\frac{GMm}{r^2}\hat{\R},
+  \qquad \mathbf F_E=-\mathbf F_s .
 \]
-The optimization fixes the coast time at $t_H$ and solves for both burn vectors.
 \end{frame}
 
-\begin{frame}{Planar states and endpoint conditions}
-At each of $N$ nodes, let $\X_k=(\R_k,\V_k)$ with $\R_k=(x_k,y_k)$ in km and $\V_k=(v_{x,k},v_{y,k})$ in km/s. Pairs denote column vectors.
-\medskip
-
-\lead{Departure.} Node $0$ is immediately after the first burn.
+\begin{frame}{The restricted two-body equation}
+Dividing each gravitational force by the mass it acts on gives the two inertial accelerations. Using $\hat{\R}=\R/r$ gives
 \[
-  \R_0=(0,-r_1), \qquad \V_0=(\sqrt{\mu/r_1},0)+\dv_1 .
+  \ddot{\mathbf R}_s=-\frac{GM}{r^3}\R,
+  \qquad
+  \ddot{\mathbf R}_E=+\frac{Gm}{r^3}\R .
 \]
-\lead{Arrival.} Node $N-1$ is immediately before the second burn.
+Since $\R=\mathbf R_s-\mathbf R_E$, the relative acceleration is
 \[
-\begin{aligned}
-  \R_{N-1} &= (0,r_2)+\sr ,\\
-  \V_{N-1}+\dv_2 &= (-\sqrt{\mu/r_2},0)+\sv .
-\end{aligned}
+  \ddot{\R}=\ddot{\mathbf R}_s-\ddot{\mathbf R}_E
+           =-\frac{G(M+m)}{r^3}\R .
 \]
-The signed terminal errors $\sr$ (km) and $\sv$ (km/s) vanish for an exact transfer. Each impulse changes only velocity.
+For a spacecraft, $m\ll M$, so $G(M+m)\approx GM$. With Earth's gravitational parameter $\mu=GM$, the restricted two-body equation becomes
+\[
+  \boxed{\ddot{\R}=-\frac{\mu}{r^3}\R} .
+\]
 \end{frame}
 
-\begin{frame}{Linearizing the coast dynamics}
-For the planar state $\X=(x,y,v_x,v_y)^T$, let $r=\sqrt{x^2+y^2}$. The nonlinear state derivative is
+\begin{frame}{Linearizing the dynamics}
+For planar motion, let $r=\sqrt{x^2+y^2}$. The state and its derivative are
 \[
+  \X=\begin{bmatrix}x\\y\\v_x\\v_y\end{bmatrix},
+  \qquad
   \dot{\X}=f(\X)=
-   \begin{bmatrix}v_x & v_y & -\mu x/r^3 & -\mu y/r^3\end{bmatrix}^{T}.
+  \begin{bmatrix}v_x\\v_y\\-\mu x/r^3\\-\mu y/r^3\end{bmatrix}.
 \]
 At node $k$, fix a reference state $\bar\X_k$ and take the first-order Taylor expansion:
 \[
   A_k=\left.\frac{\partial f}{\partial\X}\right|_{\bar\X_k},\qquad
   \alert{f_{\mathrm{lin},k}(\X_k)=f(\bar\X_k)+A_k(\X_k-\bar\X_k)} .
 \]
-Within one solve, $f(\bar\X_k)$ and $A_k$ are fixed. The new state $\X_k$ enters the dynamics affinely.
 \end{frame}
 
-\begin{frame}{The gravity Jacobian}
+\begin{frame}{The Jacobian}
 Write $\bar\R=(\bar x,\bar y)^T$ and $\bar r=\norm{\bar\R}_2$ at node $k$. Differentiating $-\mu\R/r^3$ with respect to position gives
 \[
   \frac{\partial\ddot{\R}}{\partial\R}
@@ -206,24 +143,71 @@ The full state Jacobian, ordered as $(x,y,v_x,v_y)$, is
 \note{The upper right identity comes from the kinematic relation between position and velocity. Gravity has no velocity dependence, so the lower right block is zero.}
 \end{frame}
 
-\begin{frame}{Two discretizations of the same coast}
-Set $h=t_H/(N-1)$ and $t_k=kh$. The exact update integrates the state derivative:
+\begin{frame}{Endpoint conditions}
+At each of $N$ nodes, $\X_k=\begin{bmatrix}\R_k\\\V_k\end{bmatrix}$ contains position (km) and velocity (km/s).
+\medskip
+
+\begin{columns}[onlytextwidth,c]
+\begin{column}{.65\textwidth}
+\lead{Departure.} Node $0$ is just after burn 1.
+\[
+\begin{aligned}
+  \R_0 &= \begin{bmatrix}0\\-r_1\end{bmatrix},\\[3pt]
+  \V_0 &= \begin{bmatrix}\sqrt{\mu/r_1}\\0\end{bmatrix}+\dv_1 .
+\end{aligned}
+\]
+\lead{Arrival.} Node $N-1$ is just before burn 2.
+\[
+\begin{aligned}
+  \R_{N-1} &= \begin{bmatrix}0\\r_2\end{bmatrix}+\sr,\\[3pt]
+  \V_{N-1}+\dv_2 &= \begin{bmatrix}-\sqrt{\mu/r_2}\\0\end{bmatrix}+\sv .
+\end{aligned}
+\]
+\end{column}
+\begin{column}{.34\textwidth}
+\centering
+\begin{tikzpicture}[x=.9cm,y=.9cm,>=stealth,font=\scriptsize]
+  \draw[black!25] (0,0) circle (.7) (0,0) circle (1.8);
+  \draw[black!40,->] (-.45,0) -- (2.05,0) node[right] {$x$};
+  \draw[black!40,->] (0,-1.05) -- (0,2.4) node[above] {$y$};
+  \filldraw[fill=blue!12,draw=blue!30] (0,0) circle (.25);
+  \node[below left,inner sep=2pt] at (-.15,-.15) {Earth};
+  \draw[structure.fg,very thick] plot[domain=-90:90,samples=70]
+    ({sqrt(.7*1.8)*cos(\x)},{.55+1.25*sin(\x)});
+  \draw[structure.fg,->,thick] (0,-.7) -- (.75,-.7);
+  \draw[structure.fg,->,thick] (0,1.8) -- (-.75,1.8);
+  \fill[structure.fg] (0,-.7) circle (2pt);
+  \draw[structure.fg,fill=white,thick] (0,1.8) circle (2pt);
+  \node[below,align=center,fill=white,inner sep=2pt] at (0,-.95)
+    {Departure\\$(0,-r_1)$};
+  \node[above right,align=left,fill=white,inner sep=2pt] at (.12,1.85)
+    {Target\\$(0,r_2)$};
+  \node[below,font=\tiny] at (0,-1.85) {Schematic transfer};
+\end{tikzpicture}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Discretizing the dynamics}
+For a fixed transfer time $t_H$ and $N$ equally spaced nodes, set $h=t_H/(N-1)$ and $t_k=kh$. The exact update is
 \[
  \X_{k+1}=\X_k+\int_{t_k}^{t_{k+1}} f(\X(t))\,dt .
 \]
-For each interval let $F_k=f_{\mathrm{lin},k}(\X_k)$ and let $\W_k\in\mathbb R^4$ be a dynamics slack.
+For each interval, set $F_k=f_{\mathrm{lin},k}(\X_k)$. The dynamics slack $\sd{k}\in\mathbb R^4$ allows a state mismatch in each update.
 \begin{align*}
- \text{Forward Euler}\qquad &\X_{k+1}=\X_k+h F_k+\W_k,\\[5pt]
- \text{Trapezoidal}\qquad &\X_{k+1}=\X_k+\tfrac h2(F_k+F_{k+1})+\W_k .
+ \text{Forward Euler}\qquad &\X_{k+1}=\X_k+h F_k+\sd{k},\\[5pt]
+ \text{Trapezoidal}\qquad &\X_{k+1}=\X_k+\tfrac h2(F_k+F_{k+1})+\sd{k} .
 \end{align*}
 The trapezoidal step uses a separate linearization at $\bar\X_{k+1}$. Both constraints are affine. For smooth dynamics with zero slack, the integration rules have global orders $O(h)$ and $O(h^2)$, respectively.
 \end{frame}
 
 \begin{frame}{The convex subproblem}
-Choose the states $\{\X_k\}$, impulses $\dv_1,\dv_2\in\mathbb R^2$, interval slacks $\{\W_k\}$, and terminal slacks $\sr,\sv\in\mathbb R^2$. Minimize
+At each SCP iteration, solve
 \[
+ \min_{\substack{\{\X_k\}_{k=0}^{N-1},\;\dv_1,\;\dv_2\\
+                  \{\sd{k}\}_{k=0}^{N-2},\;\sr,\;\sv}}
  \underbrace{\norm{\dv_1}_2+\norm{\dv_2}_2}_{\text{total burn magnitude}}
- +\underbrace{\lambda_d\sum_{k=0}^{N-2}\norm{\W_k}_1
+ +\underbrace{\lambda_d\sum_{k=0}^{N-2}\norm{\sd{k}}_1
  +\lambda_r\norm{\sr}_1+\lambda_v\norm{\sv}_1}_{\text{penalties on dynamics and endpoint errors}} .
 \]
 Enforce the endpoint conditions and one discretized dynamics constraint per interval. At every node, bound each component of the state update:
@@ -232,34 +216,34 @@ Enforce the endpoint conditions and one discretized dynamics constraint per inte
  \norm{\V_k-\bar\V_k}_\infty\leq\rho_v=0.5\ \kms .
 \]
 The positive weights $\lambda_d,\lambda_r,\lambda_v$ set the cost of each slack. The implementation uses $10^3$ for all three with states in km and km/s.
-\end{frame}
-
-\begin{frame}{The first reference trajectory}
-Start with a trial tangential speed and propagate the nonlinear coast. The write-up tests speeds such as $1.25\,v_c(r_1)$ and $1.30\,v_c(r_1)$.
 \medskip
 
-Let $\R_\star=(0,r_2)$ be the target. An exact terminal position and the endpoint trust region can hold together only if
+To initialize $\bar\X_k$, integrate the nonlinear dynamics from a trial tangential departure speed. After each solve, use the new trajectory as the reference.
+\end{frame}
+
+\begin{frame}{The analytical Hohmann transfer}
+Vis-viva gives the speed $v$ at radius $r$ on an orbit with semimajor axis $a$. The derivation is in the appendix.
 \[
-   \norm{\R_\star-\bar\R_{N-1}}_\infty\leq 100\ \km .
+  \boxed{v^2=\mu\!\left(\frac{2}{r}-\frac{1}{a}\right)}
 \]
-A reference endpoint thousands of kilometers away violates this condition. Allowing $\R_{N-1}=\R_\star+\sr$ lets the first solve take a bounded step toward the target.
-\medskip
-
-After each solve, replace $\bar\X_k$ with the new $\X_k$ and linearize again. The trust region moves with the reference.
-\end{frame}
-
-\begin{frame}{A separate check on arrival accuracy}
-A small change between SCP iterates can coexist with nonzero slacks or integration error. First inspect $\W_k$, $\sr$, and $\sv$.
-\medskip
-
-Then apply the optimized departure impulse and integrate the original two-body equations for $t_H$. The visualizer uses fourth-order Runge--Kutta with steps of at most 10 s. Let $\R_{\rm prop},\V_{\rm prop}$ denote that coast.
+Use $a=r$ for each circular orbit and $a=a_t=(r_1+r_2)/2$ for the transfer ellipse. The speed changes at the two burns are
 \[
 \begin{aligned}
- e_r&=\norm{\R_{\rm prop}(t_H)-(0,r_2)}_2,\\[3pt]
- e_v&=\norm{\V_{\rm prop}(t_H)+\dv_2-(-\sqrt{\mu/r_2},0)}_2 .
+\Delta v_{H,1}
+ &=\sqrt{\mu\!\left(\frac{2}{r_1}-\frac1{a_t}\right)}
+      -\sqrt{\frac{\mu}{r_1}}
+  &&\text{enter the ellipse},\\[4pt]
+\Delta v_{H,2}
+ &=\sqrt{\frac{\mu}{r_2}}
+      -\sqrt{\mu\!\left(\frac{2}{r_2}-\frac1{a_t}\right)}
+  &&\text{circularize}.
 \end{aligned}
 \]
-The reported \lead{arrival miss} is $e_r$. An instantaneous second burn can change $e_v$ but cannot correct an existing position error at $t_H$.
+Both impulses are prograde. The coast covers half an orbital period:
+\[
+ \Delta v_H=\Delta v_{H,1}+\Delta v_{H,2},
+ \qquad t_H=\pi\sqrt{a_t^3/\mu}.
+\]
 \end{frame}
 
 \begin{frame}{Forward Euler misses the target by 21,585.7 km}
@@ -277,7 +261,12 @@ The propagated transfer tracks the nodes closely at the scale of the orbit.
 \end{frame}
 
 \begin{frame}{Burn cost and arrival accuracy}
-Both numerical solutions use the same departure and arrival orbits and the same Hohmann coast time.
+\[
+ \alert{\Delta v_H=3.935\ \kms}
+ \qquad\qquad
+ \alert{t_H=5.26\ \mathrm{h}}
+\]
+Arrival miss is the distance from the target after propagating the optimized departure burn under two-body gravity for $t_H$.
 \begin{center}
 \renewcommand{\arraystretch}{1.26}
 \begin{tabular}{lrr}
@@ -291,5 +280,97 @@ Trapezoidal & $3.932$ & $205.7$\\
 \end{tabular}
 \end{center}
 Forward Euler's lower burn cost accompanies a large endpoint error. The trapezoidal result comes within about \lead{3 m/s} of the analytical cost, but the propagated spacecraft still arrives \lead{205.7 km} from the target.
+\end{frame}
+
+\begin{frame}
+  \centering
+  {\usebeamercolor[fg]{structure}\Huge Thanks for listening.\par}
+  \bigskip
+
+  Any questions / next steps?
+\end{frame}
+
+\appendix
+\begin{frame}{Appendix: Why orbital energy stays constant}
+Define specific orbital energy as the sum of kinetic and potential energy per unit mass. We want to prove that it is constant.
+\[
+ \varepsilon=\frac{v^2}{2}-\frac{\mu}{r}.
+\implies
+ \frac{d\varepsilon}{dt}=\frac{d}{dt}(\frac{v^2}{2})+\frac{d}{dt}(\frac{\mu}{r})
+\]
+
+Let $\V=\dot{\R}$ be the relative velocity and $v=\norm{\V}_2$ the speed. Since $v^2=\V\cdot\V$, the product rule gives
+\[
+ \frac{d}{dt}\left(\frac{v^2}{2}\right)
+ =\frac12\frac{d}{dt}(\V\cdot\V)
+ =\frac12(\dot{\V}\cdot\V+\V\cdot\dot{\V})
+ =\V\cdot\dot{\V}
+ =\V\cdot\ddot{\R}.
+\]
+Similarly, differentiating $r^2=\R\cdot\R$ gives $2r\dot r=2\R\cdot\V$. Substituting the gravitational acceleration then gives
+\[
+ \V\cdot\ddot{\R}
+ =-\frac{\mu}{r^3}\,\R\cdot\V
+ =-\frac{\mu}{r^2}\dot r
+ =\frac{d}{dt}\!\left(\frac{\mu}{r}\right).
+\]
+The two time derivatives are equal. Their difference is zero, so the specific orbital energy (energy per unit mass) stays constant:
+\end{frame}
+
+\begin{frame}{Appendix: Angular momentum at the two apsides}
+The specific angular momentum is $\mathbf h=\R\times\V$. Its derivative along the coast is
+\[
+ \dot{\mathbf h}=\underbrace{\V\times\V}_{\mathbf 0}
+ +\underbrace{\R\times\ddot{\R}}_{\mathbf 0}=\mathbf 0 .
+\]
+The second cross product vanishes because gravity acts along the line joining Earth and the spacecraft. Thus $H=\norm{\mathbf h}_2$ is constant.
+\medskip
+
+Let $r_p$ and $r_a$ be the minimum and maximum radii of a noncircular ellipse. At either extreme, $\dot r=0$. Since $\R\cdot\V=r\dot r$, velocity is perpendicular to position there, and $\norm{\R\times\V}_2=rv$.
+\[
+ H=r_p v_p=r_a v_a
+ \quad\Longrightarrow\quad
+ v_p=H/r_p,\qquad v_a=H/r_a .
+\]
+\end{frame}
+
+\begin{frame}{Appendix: Equating energy at periapsis and apoapsis}
+Substitute $v_p=H/r_p$ and $v_a=H/r_a$ into the energy at the two ends of the same ellipse:
+\[
+ \frac{H^2}{2r_p^2}-\frac{\mu}{r_p}
+ =\frac{H^2}{2r_a^2}-\frac{\mu}{r_a}.
+\]
+Collect the terms containing $H^2$ and factor the difference of squares:
+\[
+ \frac{H^2}{2}
+ \left(\frac{1}{r_p}-\frac{1}{r_a}\right)
+ \left(\frac{1}{r_p}+\frac{1}{r_a}\right)
+ =\mu\left(\frac{1}{r_p}-\frac{1}{r_a}\right).
+\]
+Because $r_p<r_a$, the common factor is nonzero. Canceling it gives
+\[
+ H^2=\frac{2\mu}{1/r_p+1/r_a}
+ =\frac{2\mu r_p r_a}{r_p+r_a}.
+\]
+\end{frame}
+
+\begin{frame}{Appendix: From the ellipse's energy to its speed}
+Evaluate the energy at periapsis using the expression for $H^2$:
+\[
+ \begin{aligned}
+ \varepsilon
+ &=\frac{H^2}{2r_p^2}-\frac{\mu}{r_p}
+ =\frac{\mu r_a}{r_p(r_p+r_a)}-\frac{\mu}{r_p}\\[4pt]
+ &=\frac{\mu[r_a-(r_p+r_a)]}{r_p(r_p+r_a)}
+ =-\frac{\mu}{r_p+r_a}=-\frac{\mu}{2a}.
+ \end{aligned}
+\]
+The last step uses $r_p+r_a=2a$, the length of the major axis. Energy has this same value at every point on the coast, so
+\[
+ \frac{v^2}{2}-\frac{\mu}{r}=-\frac{\mu}{2a}
+ \quad\Longrightarrow\quad
+ \boxed{v^2=\mu\!\left(\frac{2}{r}-\frac{1}{a}\right)} .
+\]
+As the ellipse approaches a circle, $r_p$ and $r_a$ both approach $a$. Setting $r=a$ gives $v_c=\sqrt{\mu/r}$.
 \end{frame}
 \end{document}
