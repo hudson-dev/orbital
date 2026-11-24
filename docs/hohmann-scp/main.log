@@ -225,11 +225,10 @@ LaTeX Font Info:    Trying to load font information for U+msb on input line 16.
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ) [1
 
-] [2] [3]
+] [2] [3] [4] [5] [6]
 File: figures/forward_euler_updated.png Graphic file (type bmp)
 <figures/forward_euler_updated.png>
- [4]
 File: figures/trapezoidal_updated.png Graphic file (type bmp)
 <figures/trapezoidal_updated.png>
- [5] (main.aux) )
-Output written on main.xdv (5 pages, 64112 bytes).
+ [7] [8] (main.aux) )
+Output written on main.xdv (8 pages, 106288 bytes).

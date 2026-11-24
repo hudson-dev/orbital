@@ -1,9 +1,14 @@
 from math import sqrt
 import time
 import numpy as np
+import jax
+import jax.numpy as jnp
 import cvxpy as cvxpy
 import matplotlib.pyplot as plt
 from visualizer import TransferVisualizer
+
+# positions are ~1e4 km, so float32 would lose too much precision in the jacobians
+jax.config.update("jax_enable_x64", True);
 
 # forward euler of initial guess
 euler_dt = 0.01;
@@ -40,6 +45,20 @@ def nonlinear_dynamics(state):
         v_y, 
         -mu/(sqrt(x**2+y**2))**3*x, 
         -mu/sqrt(x**2+y**2)**3*y
+    ]);
+
+# same dynamics written with jax.numpy so jax can differentiate through it
+def nonlinear_dynamics_jax(state):
+    x = state[0];
+    y = state[1];
+    v_x = state[2];
+    v_y = state[3];
+
+    return jnp.array([
+        v_x, 
+        v_y, 
+        -mu/(jnp.sqrt(x**2+y**2))**3*x, 
+        -mu/jnp.sqrt(x**2+y**2)**3*y
     ]);
 
 # our linearized jacobian of our non-linear dynamics
@@ -91,14 +110,32 @@ def linearize_propagation(x_bar, s_bar, dt):
 
     return x_next_bar, A, B;
 
+def dilated_dynamics_jax(x, s):
+    return s*nonlinear_dynamics_jax(x);
+
+def propagate_jax(x_k, s_k, dt, substeps = 10):
+    for _ in range(substeps):
+        x_k = rk4(dilated_dynamics_jax, x_k, s_k, dt/substeps);
+    return x_k;
+
+# same linearization as linearize_propagation(), but A and B are exact jax derivatives instead of finite differences
+@jax.jit
+def linearize_propagation_jax(x_bar, s_bar, dt):
+    x_next_bar = propagate_jax(x_bar, s_bar, dt);
+
+    A, B = jax.jacfwd(propagate_jax, argnums=(0, 1))(x_bar, s_bar, dt);
+    return x_next_bar, A, B;
+
 # problem parameters
 N = 50;            # nodees
-max_iter = 50;    # SCP iterations
+max_iter = 100;   # SCP iterations (free arrival needs ~75, fixed arrival ~20)
 trust_region_position = 2000;
 trust_region_velocity = 1.0;
 trust_region_time_dilation = 0.2;
 slack = cvxpy.Variable((4, N - 1));
 slack_weight = 1e3;
+free_arrival = True; # True: arrive anywhere on the target orbit, False: arrive exactly at x_final
+trust_region_arrival = 2000; # free arrival only: how far (km) the arrival point can slide along the target orbit per iteration
 
 # hohmann transfer parameters
 mu = 398600.44;  # Earth's gravitational parameter
@@ -132,6 +169,11 @@ velocity_unit = distance_unit/time_unit;  # km/s (circular speed of the initial 
 S = np.diag([distance_unit, distance_unit, velocity_unit, velocity_unit]); # state in km = S @ scaled state
 S_inv = np.linalg.inv(S);                                                  # scaled state = S_inv @ state in km
 
+# free arrival: circular velocity at a point r on the target orbit is sqrt(mu/r_2) in the direction perpendicular to r,
+# which is linear in r: v = (sqrt(mu/r_2)/r_2) * rotate_90 @ r. in scaled units mu = 1, so the factor is r_2_scaled^(-3/2)
+r_2_scaled = r_2/distance_unit;
+circular_velocity_matrix = r_2_scaled**-1.5 * np.array([[0, -1], [1, 0]]); # counterclockwise orbit
+
 # initial guess
 est_time = np.pi*sqrt(((((r_1 + r_2)/2)**3)/(mu))); # comes from Hohmann transfer time
 dt = est_time/(N - 1); # we take the estimated time of the trajectory and divide by number of scp nodes
@@ -149,6 +191,7 @@ x_prev = reference_trajectory.copy();
 trajectory_history = [x_prev.copy()];
 
 s_prev = np.ones(N - 1);
+arrival_step_prev = 0.0;
 
 scp_start = time.perf_counter();
 for iteration in range(max_iter):
@@ -161,7 +204,10 @@ for iteration in range(max_iter):
     delta_v1 = cvxpy.Variable((2,));
     delta_v2 = cvxpy.Variable((2,));
 
-    terminal_pos_slack = cvxpy.Variable(2);
+    if free_arrival:
+        terminal_pos_slack = cvxpy.Variable(); # one slack on the radius
+    else:
+        terminal_pos_slack = cvxpy.Variable(2);
     terminal_vel_slack = cvxpy.Variable(2);
 
     x_prev_scaled = S_inv @ x_prev;
@@ -171,8 +217,25 @@ for iteration in range(max_iter):
     # boundary condition constraints
     constraints.append(x[:2, 0] == x_inital[:2]/distance_unit);
     constraints.append(x[2:, 0] == delta_v1 + x_inital[2:]/velocity_unit); # immediately after
-    constraints.append(x[:2, -1] == x_final[:2]/distance_unit + terminal_pos_slack);
-    constraints.append(x[2:, -1] + delta_v2 == x_final[2:]/velocity_unit + terminal_vel_slack); # immediately before + terminal slack on vel
+    if free_arrival:
+        # |r_N| = r_2 isn't convex, so linearize it around the previous final position:
+        # the final position must lie on the line tangent to the target orbit near the last guess
+        r_N_bar = x_prev_scaled[:2, -1];
+        n_bar = r_N_bar/np.linalg.norm(r_N_bar);
+        constraints.append(n_bar @ x[:2, -1] == r_2_scaled + terminal_pos_slack);
+
+        # sliding far along the tangent line drifts off the real orbit, so limit how far the arrival point moves per iteration
+        t_bar = np.array([-n_bar[1], n_bar[0]]); # direction along the target orbit
+        constraints.append(cvxpy.abs(t_bar @ (x[:2, -1] - r_N_bar)) <= trust_region_arrival/distance_unit);
+
+        # after the second burn, the velocity must be circular wherever we arrive
+        final_position = x[:2, -1];
+        velocity_after_burn = x[2:, -1] + delta_v2;
+        circular_velocity = circular_velocity_matrix @ final_position;
+        constraints.append(velocity_after_burn == circular_velocity + terminal_vel_slack);
+    else:
+        constraints.append(x[:2, -1] == x_final[:2]/distance_unit + terminal_pos_slack);
+        constraints.append(x[2:, -1] + delta_v2 == x_final[2:]/velocity_unit + terminal_vel_slack); # immediately before + terminal slack on vel
 
     # free final time & time dilation constraints (s has no units, so it doesn't need scaling)
     total_time = cvxpy.sum(s)*dt/time_unit;
@@ -190,7 +253,12 @@ for iteration in range(max_iter):
     for k in range(N-1):
         x_bar_k = x_prev[:, k];
         s_bar_k = s_prev[k];
-        x_next_bar, A_k, B_k = linearize_propagation(x_bar_k, s_bar_k, dt); # in km
+        x_next_bar, A_k, B_k = linearize_propagation_jax(x_bar_k, s_bar_k, dt); # in km
+
+        # convert from jax arrays to numpy arrays so cvxpy can use them
+        x_next_bar = np.asarray(x_next_bar);
+        A_k = np.asarray(A_k);
+        B_k = np.asarray(B_k);
 
         # convert the linearization to scaled units: S turns a scaled input into km, A_k propagates it, S_inv scales the output back
         x_next_bar_scaled = S_inv @ x_next_bar;
@@ -201,7 +269,7 @@ for iteration in range(max_iter):
 
     # objective
     objective = cvxpy.Minimize(
-        cvxpy.norm(delta_v1, 2) + cvxpy.norm(delta_v2, 2) + slack_weight * cvxpy.sum(cvxpy.abs(slack)) + slack_weight * cvxpy.norm(terminal_pos_slack, 1) + slack_weight * cvxpy.norm(terminal_vel_slack, 1) + 0.5 * cvxpy.sum_squares(cvxpy.diff(s))
+        cvxpy.norm(delta_v1, 2) + cvxpy.norm(delta_v2, 2) + slack_weight * cvxpy.sum(cvxpy.abs(slack)) + slack_weight * cvxpy.sum(cvxpy.abs(terminal_pos_slack)) + slack_weight * cvxpy.norm(terminal_vel_slack, 1) + 0.5 * cvxpy.sum_squares(cvxpy.diff(s))
     )
     
     # solve the convex sub-problem
@@ -218,7 +286,15 @@ for iteration in range(max_iter):
     # check convergence
     max_x_diff = np.max(np.abs(x_new - x_prev))
     max_s_diff = np.max(np.abs(s.value - s_prev))
-    print(f"Iteration {iteration}: Max trajectory update shift = {max_x_diff:.4f}, took {time.perf_counter() - iteration_start:.3f} s")
+    radius_error = abs(np.linalg.norm(x_new[:2, -1]) - r_2) # the tangent line only approximates the orbit, so check the real radius
+
+    # near the optimum the arrival point bounces back and forth along the orbit, so halve its trust region every time it reverses
+    if free_arrival:
+        arrival_step = t_bar @ (x_new[:2, -1] - x_prev[:2, -1]);
+        if arrival_step*arrival_step_prev < 0:
+            trust_region_arrival /= 2;
+        arrival_step_prev = arrival_step;
+    print(f"Iteration {iteration}: Max trajectory update shift = {max_x_diff:.4f}, final radius error = {radius_error:.4f} km, took {time.perf_counter() - iteration_start:.3f} s")
     
     # update nominal trajectory for the next iteration
     x_prev = x_new.copy()
@@ -227,7 +303,7 @@ for iteration in range(max_iter):
     trajectory_history.append(x_prev.copy())
     
     # we didn't change much from previous guess, so we're done
-    if max_x_diff < 1e-2 and max_s_diff < 1e-3:
+    if max_x_diff < 1e-2 and max_s_diff < 1e-3 and radius_error < 1e-2:
         print("Converged!")
         break
 
@@ -245,8 +321,18 @@ print("Position slack (km):", terminal_pos_slack.value*distance_unit)
 print("Velocity slack (km/s):", terminal_vel_slack.value*velocity_unit)
 print("Dynamics slack (km, km/s):", np.sum(np.abs(S @ slack.value), axis=1))
 
+if free_arrival:
+    # the target is wherever we arrived, snapped onto the target orbit, with circular velocity there
+    arrival_direction = x_prev[:2, -1]/np.linalg.norm(x_prev[:2, -1]);
+    arrival_position = r_2*arrival_direction;
+    arrival_velocity = sqrt(mu/r_2)*np.array([-arrival_direction[1], arrival_direction[0]]);
+    x_target = np.concatenate([arrival_position, arrival_velocity]);
+    print(f"Arrival angle: {np.degrees(np.arctan2(arrival_direction[1], arrival_direction[0])):.2f} deg (x_final is at 90 deg)");
+else:
+    x_target = x_final;
+
 # visualize the SCP solution
-visualizer = TransferVisualizer(mu, r_p, x_inital, x_final)
+visualizer = TransferVisualizer(mu, r_p, x_inital, x_target)
 final_time = dt * np.sum(s_prev)
 time_nodes = np.r_[0, np.cumsum(dt * s_prev)]
 

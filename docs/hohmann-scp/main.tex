@@ -21,12 +21,12 @@ Suppose a spacecraft starts in a circular orbit and we want to transfer it to a 
 
 Define the state as
 \[
-\mathbf{x}=\begin{bmatrix}x&y&v_x&v_y\end{bmatrix}^{T},
+\vec{x}=\begin{bmatrix}x&y&v_x&v_y\end{bmatrix}^{T},
 \]
 where $x$ and $y$ are position in km and $v_x$ and $v_y$ are velocity in km/s. Let $r=\sqrt{x^2+y^2}$ be the distance from Earth's center and let $\mu=398600.44\ \mathrm{km^3/s^2}$ be Earth's gravitational parameter. Then
 \[
 \boxed{
-\dot{\mathbf{x}}=f(\mathbf{x})=
+\dot{\vec{x}}=f(\vec{x})=
 \begin{bmatrix}
  v_x\\
  v_y\\
@@ -43,25 +43,25 @@ These correspond to an initial altitude of $191.35$ km and a final altitude of $
 
 \section{Boundary Conditions}
 
-We want to solve for the two burns, $\Delta\mathbf v_1$ and $\Delta\mathbf v_2$, where each is a two-dimensional change in velocity (km/s). We discretize the transfer into $N$ states, $\mathbf{x}_0,\ldots,\mathbf{x}_{N-1}$.
+We want to solve for the two burns, $\Delta\vec{v}_1$ and $\Delta\vec{v}_2$, where each is a two-dimensional change in velocity (km/s). We discretize the transfer into $N$ states, $\vec{x}_0,\ldots,\vec{x}_{N-1}$.
 
 The first state is defined \emph{after} the first burn. Since an impulsive burn changes velocity but not position, we have
 \begin{align*}
 \begin{bmatrix}x_0\\y_0\end{bmatrix}
 &=\begin{bmatrix}0\\-r_1\end{bmatrix},\\
 \begin{bmatrix}v_{x,0}\\v_{y,0}\end{bmatrix}
-&=\begin{bmatrix}\sqrt{\mu/r_1}\\0\end{bmatrix}+\Delta\mathbf v_1.
+&=\begin{bmatrix}\sqrt{\mu/r_1}\\0\end{bmatrix}+\Delta\vec{v}_1.
 \end{align*}
 
 Likewise, the last state is defined \emph{before} the second burn. Ideally, it should be at $(0,r_2)$, and the second burn should give the spacecraft the circular velocity of the final orbit:
 \begin{align*}
 \begin{bmatrix}x_{N-1}\\y_{N-1}\end{bmatrix}
-&=\begin{bmatrix}0\\r_2\end{bmatrix}+\mathbf{s}_r,\\
-\begin{bmatrix}v_{x,N-1}\\v_{y,N-1}\end{bmatrix}+\Delta\mathbf v_2
-&=\begin{bmatrix}-\sqrt{\mu/r_2}\\0\end{bmatrix}+\mathbf{s}_v.
+&=\begin{bmatrix}0\\r_2\end{bmatrix}+\vec{s}_r,\\
+\begin{bmatrix}v_{x,N-1}\\v_{y,N-1}\end{bmatrix}+\Delta\vec{v}_2
+&=\begin{bmatrix}-\sqrt{\mu/r_2}\\0\end{bmatrix}+\vec{s}_v.
 \end{align*}
 
-Here $\mathbf{s}_r$ is a terminal position slack (km) and $\mathbf{s}_v$ is a terminal velocity slack (km/s). We allow these errors during the SCP iterations and penalize them in the objective. For the final solution, both should be close to zero.
+Here $\vec{s}_r$ is a terminal position slack (km) and $\vec{s}_v$ is a terminal velocity slack (km/s). We allow these errors during the SCP iterations and penalize them in the objective. For the final solution, both should be close to zero.
 
 \subsection{Analytical Reference}
 
@@ -92,16 +92,16 @@ For our orbits, this gives
 
 The dynamics are nonlinear because gravitational acceleration depends on the spacecraft's position. To use convex optimization, we approximate them around a reference trajectory.
 
-Let $\bar{\mathbf{x}}_k$ be the reference state at time step $k$. Using a first-order Taylor expansion,
+Let $\bar{\vec{x}}_k$ be the reference state at time step $k$. Using a first-order Taylor expansion,
 \[
 \boxed{
-f_{\mathrm{lin},k}(\mathbf{x}_k)
-=f(\bar{\mathbf{x}}_k)+A_k(\mathbf{x}_k-\bar{\mathbf{x}}_k),
+f_{\mathrm{lin},k}(\vec{x}_k)
+=f(\bar{\vec{x}}_k)+A_k(\vec{x}_k-\bar{\vec{x}}_k),
 }
 \]
 where
 \[
-A_k=\left.\frac{\partial f}{\partial\mathbf{x}}\right|_{\mathbf{x}=\bar{\mathbf{x}}_k}
+A_k=\left.\frac{\partial f}{\partial\vec{x}}\right|_{\vec{x}=\bar{\vec{x}}_k}
 \]
 is the Jacobian of the dynamics, evaluated at the reference state. Writing $\bar r=\sqrt{\bar x^2+\bar y^2}$, we get
 \[
@@ -113,14 +113,14 @@ A_k=\begin{bmatrix}
 \end{bmatrix}.
 \]
 
-Since the reference states are fixed during each optimization, the linearized dynamics are affine in $\mathbf{x}_k$. After solving, we use the new trajectory as the reference for the next iteration.
+Since the reference states are fixed during each optimization, the linearized dynamics are affine in $\vec{x}_k$. After solving, we use the new trajectory as the reference for the next iteration.
 
 \subsection{Discretized Dynamics}
 
 Let $h=t_H/(N-1)$ be the time step in seconds. We know that the exact change in state is
 \[
-\mathbf{x}_{k+1}
-=\mathbf{x}_k+\int_{t_k}^{t_{k+1}} f(\mathbf{x}(t))\,dt.
+\vec{x}_{k+1}
+=\vec{x}_k+\int_{t_k}^{t_{k+1}} f(\vec{x}(t))\,dt.
 \]
 We need to approximate this integral to use it as a constraint in CVXPY.
 
@@ -129,11 +129,11 @@ We need to approximate this integral to use it as a constraint in CVXPY.
 I first used forward Euler, which evaluates the derivative at the beginning of each step:
 \[
 \boxed{
-\mathbf{x}_{k+1}=\mathbf{x}_k
-+h f_{\mathrm{lin},k}(\mathbf{x}_k)+\mathbf{w}_k.
+\vec{x}_{k+1}=\vec{x}_k
++h f_{\mathrm{lin},k}(\vec{x}_k)+\vec{w}_k.
 }
 \]
-Here $\mathbf{w}_k\in\mathbb R^4$ is a slack variable for the discretized dynamics. Forward Euler has global error of order $O(h)$. Over the full transfer, its approximation can differ noticeably from the nonlinear trajectory.
+Here $\vec{w}_k\in\mathbb R^4$ is a slack variable for the discretized dynamics. Forward Euler has global error of order $O(h)$. Over the full transfer, its approximation can differ noticeably from the nonlinear trajectory.
 
 \subsubsection*{Trapezoidal Integration}
 
@@ -141,14 +141,14 @@ I then used the trapezoidal rule. Instead of taking just the initial derivative,
 \[
 \boxed{
 \begin{aligned}
-\mathbf{x}_{k+1}=\mathbf{x}_k+\frac{h}{2}\bigl[
-&f_{\mathrm{lin},k}(\mathbf{x}_k)\\
-&+f_{\mathrm{lin},k+1}(\mathbf{x}_{k+1})\bigr]+\mathbf{w}_k.
+\vec{x}_{k+1}=\vec{x}_k+\frac{h}{2}\bigl[
+&f_{\mathrm{lin},k}(\vec{x}_k)\\
+&+f_{\mathrm{lin},k+1}(\vec{x}_{k+1})\bigr]+\vec{w}_k.
 \end{aligned}
 }
 \]
 
-Notice that the second term is linearized around $\bar{\mathbf{x}}_{k+1}$, not $\bar{\mathbf{x}}_k$. Even though the update contains $\mathbf{x}_{k+1}$ on both sides, the constraint is still affine because the dynamics have been linearized. The trapezoidal rule has global error of order $O(h^2)$.
+Notice that the second term is linearized around $\bar{\vec{x}}_{k+1}$, not $\bar{\vec{x}}_k$. Even though the update contains $\vec{x}_{k+1}$ on both sides, the constraint is still affine because the dynamics have been linearized. The trapezoidal rule has global error of order $O(h^2)$.
 
 \subsection{Objective and Trust Regions}
 
@@ -156,22 +156,191 @@ We minimize the magnitude of the two burns, along with penalties on the slack va
 \[
 \boxed{
 \begin{aligned}
-\min\quad &\|\Delta\mathbf v_1\|_2+\|\Delta\mathbf v_2\|_2\\
-&+\lambda_d\sum_{k=0}^{N-2}\|\mathbf{w}_k\|_1
-+\lambda_r\|\mathbf{s}_r\|_1
-+\lambda_v\|\mathbf{s}_v\|_1.
+\min\quad &\|\Delta\vec{v}_1\|_2+\|\Delta\vec{v}_2\|_2\\
+&+\lambda_d\sum_{k=0}^{N-2}\|\vec{w}_k\|_1
++\lambda_r\|\vec{s}_r\|_1
++\lambda_v\|\vec{s}_v\|_1.
 \end{aligned}
 }
 \]
 Here $\lambda_d$, $\lambda_r$, and $\lambda_v$ are positive weights. The slack variables let the optimization violate the dynamics or terminal conditions temporarily, but we want those violations to become small.
 
-We also constrain each new trajectory to stay near the reference trajectory. With $\mathbf{r}_k=[x_k,y_k]^T$, $\mathbf{v}_k=[v_{x,k},v_{y,k}]^T$, and $\mathbf{1}_2=[1,1]^T$, the trust regions are
+We also constrain each new trajectory to stay near the reference trajectory. With $\vec{r}_k=[x_k,y_k]^T$, $\vec{v}_k=[v_{x,k},v_{y,k}]^T$, and $\vec{1}_2=[1,1]^T$, the trust regions are
 \[
-|\mathbf{r}_k-\bar{\mathbf{r}}_k|\le\rho_r\mathbf{1}_2,
+|\vec{r}_k-\bar{\vec{r}}_k|\le\rho_r\vec{1}_2,
 \qquad
-|\mathbf{v}_k-\bar{\mathbf{v}}_k|\le\rho_v\mathbf{1}_2.
+|\vec{v}_k-\bar{\vec{v}}_k|\le\rho_v\vec{1}_2.
 \]
 These inequalities are componentwise. I used $\rho_r=100$ km and $\rho_v=0.5$ km/s.
+
+\subsection{Full Convex Subproblem}
+
+Putting everything together, each SCP iteration solves the following problem over the variables $\vec{x}_0,\ldots,\vec{x}_{N-1}$, $\Delta\vec{v}_1$, $\Delta\vec{v}_2$, $\vec{w}_0,\ldots,\vec{w}_{N-2}$, $\vec{s}_r$, and $\vec{s}_v$:
+\[
+\boxed{
+\begin{aligned}
+\min\quad &\|\Delta\vec{v}_1\|_2+\|\Delta\vec{v}_2\|_2
++\lambda_d\sum_{k=0}^{N-2}\|\vec{w}_k\|_1
++\lambda_r\|\vec{s}_r\|_1
++\lambda_v\|\vec{s}_v\|_1\\[4pt]
+\text{s.t.}\quad
+&\vec{x}_{k+1}=\vec{x}_k+\frac{h}{2}\bigl[f_{\mathrm{lin},k}(\vec{x}_k)+f_{\mathrm{lin},k+1}(\vec{x}_{k+1})\bigr]+\vec{w}_k,
+&&k=0,\ldots,N-2,\\
+&\vec{r}_0=\begin{bmatrix}0\\-r_1\end{bmatrix},
+\qquad
+\vec{v}_0=\begin{bmatrix}\sqrt{\mu/r_1}\\0\end{bmatrix}+\Delta\vec{v}_1,\\
+&\vec{r}_{N-1}=\begin{bmatrix}0\\r_2\end{bmatrix}+\vec{s}_r,
+\qquad
+\vec{v}_{N-1}+\Delta\vec{v}_2=\begin{bmatrix}-\sqrt{\mu/r_2}\\0\end{bmatrix}+\vec{s}_v,\\
+&|\vec{r}_k-\bar{\vec{r}}_k|\le\rho_r\vec{1}_2,
+\qquad
+|\vec{v}_k-\bar{\vec{v}}_k|\le\rho_v\vec{1}_2,
+&&k=0,\ldots,N-1.
+\end{aligned}
+}
+\]
+For forward Euler, the dynamics constraint is replaced by $\vec{x}_{k+1}=\vec{x}_k+h f_{\mathrm{lin},k}(\vec{x}_k)+\vec{w}_k$. The objective is convex and every constraint is affine, so each subproblem is a convex problem that CVXPY can solve directly.
+
+\section{Free Arrival Position}
+
+Instead of fixing the final position at $\vec{r}_{N-1}=[0,r_2]^T$, we can let the spacecraft arrive anywhere on the target orbit. The final position must then satisfy
+\[
+\|\vec{r}_{N-1}\|_2=r_2.
+\]
+This is a nonconvex constraint: the line segment between two points on the circle generally passes through its interior. We therefore approximate the radius constraint around the reference final position $\bar{\vec{r}}_{N-1}$ at each SCP iteration.
+
+\subsection{Define the Norm Function}
+
+Let
+\[
+f_r(\vec{r}_{N-1})=\|\vec{r}_{N-1}\|_2
+=\left(\vec{r}_{N-1}^{\,T}\vec{r}_{N-1}\right)^{1/2}.
+\]
+Here $f_r$ is a scalar function of the final position, distinct from the dynamics function $f$ defined earlier. We want to replace $f_r(\vec{r}_{N-1})=r_2$ with its first-order approximation.
+
+\subsection{First-Order Taylor Approximation}
+
+The first-order Taylor expansion about $\bar{\vec{r}}_{N-1}$ is
+\[
+f_r(\vec{r}_{N-1})\approx f_r(\bar{\vec{r}}_{N-1})
++\nabla f_r(\bar{\vec{r}}_{N-1})^T
+\left(\vec{r}_{N-1}-\bar{\vec{r}}_{N-1}\right).
+\]
+To find the gradient, write $\vec{r}$ for the position argument and take the differential. For $\vec{r}\ne\vec{0}$,
+\begin{align*}
+ df_r
+ &=\frac{1}{2}\left(\vec{r}^{\,T}\vec{r}\right)^{-1/2}
+ d\left(\vec{r}^{\,T}\vec{r}\right)\\
+ &=\frac{1}{2\sqrt{\vec{r}^{\,T}\vec{r}}}
+ \left((d\vec{r})^T\vec{r}+\vec{r}^{\,T}d\vec{r}\right)\\
+ &=\frac{\vec{r}^{\,T}}{\|\vec{r}\|_2}\,d\vec{r}.
+\end{align*}
+Since $df_r=(\nabla f_r)^T d\vec{r}$, we have
+\[
+\nabla f_r(\bar{\vec{r}}_{N-1})
+=\frac{\bar{\vec{r}}_{N-1}}{\|\bar{\vec{r}}_{N-1}\|_2}.
+\]
+Substituting this into the Taylor expansion gives
+\begin{align*}
+\|\vec{r}_{N-1}\|_2
+&\approx\|\bar{\vec{r}}_{N-1}\|_2
++\frac{\bar{\vec{r}}_{N-1}^{\,T}}{\|\bar{\vec{r}}_{N-1}\|_2}
+\left(\vec{r}_{N-1}-\bar{\vec{r}}_{N-1}\right)\\
+&=\|\bar{\vec{r}}_{N-1}\|_2
++\frac{\bar{\vec{r}}_{N-1}^{\,T}\vec{r}_{N-1}}{\|\bar{\vec{r}}_{N-1}\|_2}
+-\frac{\bar{\vec{r}}_{N-1}^{\,T}\bar{\vec{r}}_{N-1}}{\|\bar{\vec{r}}_{N-1}\|_2}\\
+&=\frac{\bar{\vec{r}}_{N-1}^{\,T}\vec{r}_{N-1}}{\|\bar{\vec{r}}_{N-1}\|_2}.
+\end{align*}
+The first and last terms cancel because $\bar{\vec{r}}_{N-1}^{\,T}\bar{\vec{r}}_{N-1}=\|\bar{\vec{r}}_{N-1}\|_2^2$. Thus,
+\[
+\boxed{\|\vec{r}_{N-1}\|_2\approx
+\frac{\bar{\vec{r}}_{N-1}^{\,T}\vec{r}_{N-1}}{\|\bar{\vec{r}}_{N-1}\|_2}.}
+\]
+
+\subsection{Convert the Radius Constraint to an Affine Constraint}
+
+Let
+\[
+\bar{\vec{n}}=\frac{\bar{\vec{r}}_{N-1}}{\|\bar{\vec{r}}_{N-1}\|_2}
+\]
+be the unit vector pointing in the direction of the reference final position. The linearized radius constraint is then
+\[
+\frac{\bar{\vec{r}}_{N-1}^{\,T}\vec{r}_{N-1}}{\|\bar{\vec{r}}_{N-1}\|_2}
+=\bar{\vec{n}}^T\vec{r}_{N-1}=r_2.
+\]
+The dot product $\bar{\vec{n}}^T\vec{r}_{N-1}$ is the scalar projection of the final position onto the reference radial direction. Setting it equal to $r_2$ places the final position on the line tangent to the target circle at $r_2\bar{\vec{n}}$.
+
+Adding a scalar radial slack $s_r\in\mathbb R$ gives
+\[
+\boxed{\bar{\vec{n}}^T\vec{r}_{N-1}=r_2+s_r.}
+\]
+This replaces the two-dimensional position slack $\vec{s}_r$ used for fixed arrival. Since $\bar{\vec{n}}$ is fixed during each solve, the new constraint is affine in $\vec{r}_{N-1}$ and $s_r$.
+
+\subsection{Add an Arrival Trust Region}
+
+The tangent line is a local approximation to the circle. To limit motion along it, rotate the reference radial unit vector $90^\circ$ counterclockwise:
+\[
+R=\begin{bmatrix}0&-1\\1&0\end{bmatrix},
+\qquad
+\bar{\vec{t}}=R\bar{\vec{n}}
+=\begin{bmatrix}0&-1\\1&0\end{bmatrix}
+\begin{bmatrix}\bar n_x\\\bar n_y\end{bmatrix}
+=\begin{bmatrix}-\bar n_y\\\bar n_x\end{bmatrix}.
+\]
+Here $\bar{\vec{t}}$ is the unit tangent vector. Define the tangential step from the reference endpoint as
+\[
+\delta_a=\bar{\vec{t}}^T
+\left(\vec{r}_{N-1}-\bar{\vec{r}}_{N-1}\right).
+\]
+The arrival trust region is
+\[
+\boxed{|\delta_a|
+=\left|\bar{\vec{t}}^T
+\left(\vec{r}_{N-1}-\bar{\vec{r}}_{N-1}\right)\right|
+\le\rho_a.}
+\]
+I initialized $\rho_a=2000$ km. If the tangential step changes sign between iterations, $\delta_a\delta_{a,\mathrm{prev}}<0$, I halve the trust region, $\rho_a\leftarrow\rho_a/2$, to reduce back-and-forth motion near the solution.
+
+\subsection{Circular Velocity at Arrival}
+
+After the second burn, the velocity must be tangent to the target orbit and have circular speed
+\[
+\|\vec{v}_{\mathrm{circ}}\|_2=\sqrt{\frac{\mu}{r_2}}.
+\]
+On the target circle, $\vec{r}_{N-1}/r_2$ is the radial unit vector. Applying the same rotation matrix $R$ gives the counterclockwise tangent direction, so
+\begin{align*}
+\vec{v}_{\mathrm{circ}}(\vec{r}_{N-1})
+&=\sqrt{\frac{\mu}{r_2}}\,R\,\frac{\vec{r}_{N-1}}{r_2}\\
+&=\sqrt{\frac{\mu}{r_2^3}}\,R\,\vec{r}_{N-1}.
+\end{align*}
+The factor $\sqrt{\mu/r_2^3}$ multiplies the position vector; the speed itself is $\sqrt{\mu/r_2}$. Since $r_2$ is constant, this expression is linear in the final position and needs no further Taylor approximation. It gives the desired circular velocity when the radius constraint is satisfied.
+
+Adding the velocity slack gives the terminal velocity constraint:
+\[
+\boxed{\vec{v}_{N-1}+\Delta\vec{v}_2
+=\sqrt{\frac{\mu}{r_2^3}}\,R\,\vec{r}_{N-1}+\vec{s}_v.}
+\]
+
+\subsection*{Terminal Conditions Used in SCP}
+
+The free-arrival subproblem uses the following terminal constraints:
+\[
+\boxed{
+\begin{aligned}
+&\bar{\vec{n}}^T\vec{r}_{N-1}=r_2+s_r,\\
+&\left|\bar{\vec{t}}^T\left(\vec{r}_{N-1}-\bar{\vec{r}}_{N-1}\right)\right|\le\rho_a,\\
+&\vec{v}_{N-1}+\Delta\vec{v}_2
+=\sqrt{\frac{\mu}{r_2^3}}\,R\,\vec{r}_{N-1}+\vec{s}_v.
+\end{aligned}
+}
+\]
+In the objective, $\lambda_r\|\vec{s}_r\|_1$ is replaced by $\lambda_r|s_r|$.
+
+Even with $s_r=0$, the affine constraint only places the endpoint on the tangent line. The stopping criterion therefore also checks the true radius error,
+\[
+\left|\|\vec{r}_{N-1}\|_2-r_2\right|<10^{-2}\ \mathrm{km}.
+\]
+After convergence, let $\hat{\vec{r}}_{\mathrm{arr}}=\vec{r}_{N-1}/\|\vec{r}_{N-1}\|_2$. The snapped arrival position is $r_2\hat{\vec{r}}_{\mathrm{arr}}$, its circular velocity is $\sqrt{\mu/r_2}\,R\hat{\vec{r}}_{\mathrm{arr}}$, and the arrival angle is $\operatorname{atan2}(y_{N-1},x_{N-1})$.
 
 \section{Problems with the Initial Guess}
 
@@ -179,7 +348,7 @@ To initialize SCP, I propagated an initial orbit using a trial velocity, such as
 
 The trust region applies at each SCP iteration, so the solution can move farther from the original guess after several iterations. However, the first convex subproblem still has to be feasible. If I require the final position to equal the target exactly, but the reference endpoint is thousands of kilometers away, it cannot satisfy both that equality and a $100$ km trust region at the final node.
 
-This is why I introduced the terminal position slack $\mathbf{s}_r$. It lets the optimizer move toward the target over multiple iterations. I also kept the position and velocity slacks separate because they measure different errors.
+This is why I introduced the terminal position slack $\vec{s}_r$. It lets the optimizer move toward the target over multiple iterations. I also kept the position and velocity slacks separate because they measure different errors.
 
 The slack terms introduce another issue: the optimizer can appear to converge while still violating the original dynamics or boundary conditions. I therefore check the remaining slacks and propagate the optimized burns through the nonlinear two-body equations. This propagation gives the arrival miss reported below.
 
