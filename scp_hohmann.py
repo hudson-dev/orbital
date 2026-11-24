@@ -269,7 +269,7 @@ for iteration in range(max_iter):
 
     # objective
     objective = cvxpy.Minimize(
-        cvxpy.norm(delta_v1, 2) + cvxpy.norm(delta_v2, 2) + slack_weight * cvxpy.sum(cvxpy.abs(slack)) + slack_weight * cvxpy.sum(cvxpy.abs(terminal_pos_slack)) + slack_weight * cvxpy.norm(terminal_vel_slack, 1) + 0.5 * cvxpy.sum_squares(cvxpy.diff(s))
+        cvxpy.norm(delta_v1, 2) + cvxpy.norm(delta_v2, 2) + slack_weight * cvxpy.sum(cvxpy.abs(slack)) + slack_weight * cvxpy.norm(terminal_pos_slack, 1) + slack_weight * cvxpy.norm(terminal_vel_slack, 1) + 0.5 * cvxpy.sum_squares(cvxpy.diff(s))
     )
     
     # solve the convex sub-problem
@@ -291,7 +291,7 @@ for iteration in range(max_iter):
     # near the optimum the arrival point bounces back and forth along the orbit, so halve its trust region every time it reverses
     if free_arrival:
         arrival_step = t_bar @ (x_new[:2, -1] - x_prev[:2, -1]);
-        if arrival_step*arrival_step_prev < 0:
+        if arrival_step*arrival_step_prev < 0: # we changed directions
             trust_region_arrival /= 2;
         arrival_step_prev = arrival_step;
     print(f"Iteration {iteration}: Max trajectory update shift = {max_x_diff:.4f}, final radius error = {radius_error:.4f} km, took {time.perf_counter() - iteration_start:.3f} s")
